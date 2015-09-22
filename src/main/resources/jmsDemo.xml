@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:jms="http://www.springframework.org/schema/integration/jms"
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xmlns:stream="http://www.springframework.org/schema/integration/stream"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/integration/jms http://www.springframework.org/schema/integration/jms/spring-integration-jms.xsd http://www.springframework.org/schema/integration/stream http://www.springframework.org/schema/integration/stream/spring-integration-stream.xsd">
+
+	<jms:message-driven-channel-adapter id="jmsRequestAdapter1" destination="requestQueue" channel="stage1"/>
+
+	<jms:channel id="stage1" queue="stage1Queue" concurrency="3"/>
+
+	<int:service-activator id="stage1service1" ref="timeConsumingService" method="operationLastingThreeSeconds" input-channel="stage1" output-channel="stage2"/>
+
+	<jms:channel id="stage2" queue="stage2Queue" concurrency="3-10"/>
+
+	<int:service-activator id="stage2service1" ref="timeConsumingService" method="operationLastingFiveSeconds" input-channel="stage2" output-channel="stage3"/>
+
+	<jms:channel id="stage3" queue="stage3Queue"/>
+
+	<int:logging-channel-adapter id="messageLogger" log-full-message="true" channel="stage3" level="INFO"/>
+
+	<int:poller id="defaultPoller" default="true" fixed-rate="1"/>
+
+	<bean id="requestQueue" class="org.apache.activemq.command.ActiveMQQueue">
+		<constructor-arg value="${queues.request}"/>
+	</bean>
+
+	<bean id="stage1Queue" class="org.apache.activemq.command.ActiveMQQueue">
+		<constructor-arg value="${queues.stage1}"/>
+	</bean>
+
+	<bean id="stage2Queue" class="org.apache.activemq.command.ActiveMQQueue">
+		<constructor-arg value="${queues.stage2}"/>
+	</bean>
+
+	<bean id="stage3Queue" class="org.apache.activemq.command.ActiveMQQueue">
+		<constructor-arg value="${queues.stage3}"/>
+	</bean>
+
+	<bean id="timeConsumingService" class="org.test.spring.integration.demo.service.TimeConsumingService"/>
+
+	<bean id="connectionFactory" class="org.springframework.jms.connection.CachingConnectionFactory">
+		<property name="targetConnectionFactory">
+			<bean class="org.apache.activemq.ActiveMQConnectionFactory">
+				<property name="brokerURL" value="${spring.activemq.brokerURL}"/>
+			</bean>
+		</property>
+		<property name="sessionCacheSize" value="10"/>
+	</bean>
+
+	<beans profile="dev">
+		<stream:stdin-channel-adapter id="stdin" channel="stdinToJmsOutChannel"/>
+
+		<int:channel id="stdinToJmsOutChannel"/>
+
+		<jms:outbound-channel-adapter id="jmsRequestSimulatorAdapter" destination="requestQueue" channel="stdinToJmsOutChannel"/>
+	</beans>
+
+</beans>
