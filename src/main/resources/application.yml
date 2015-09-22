@@ -1,0 +1,21 @@
+spring:
+  profiles:
+    active: dev
+queues:
+  request: queues.request
+  stage1: queues.stage1
+  stage2: queues.stage2
+  stage3: queues.stage3
+---
+spring:
+  profiles: dev
+  activemq:
+    brokerURL: vm://localhost
+---
+spring:
+  profiles: uat
+  activemq:
+    brokerURL: vm://localhost
+---
+spring:
+  profiles: prod
